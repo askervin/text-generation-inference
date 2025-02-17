@@ -103,6 +103,16 @@ def get_sliding_windows() -> int:
 
 def init_cpu_threads_env(rank_id: int, world_size: int):
     import psutil
+
+    if os.getenv("MEM_INTERLEAVE"):
+        try:
+            import numa
+            node_mask=numa.LIBNUMA.numa_parse_nodestring(bytes(os.getenv("MEM_INTERLEAVE"), "ascii"))
+            logger.info("use interleaving memory policy, node mask: %x" % (node_mask.contents.maskp.contents.value,))
+            numa.LIBNUMA.numa_set_interleave_mask(node_mask)
+        except Exception as err:
+            logger.info(f"error when setting interleave memory policy: {err}")
+
     allowed_cpus = psutil.Process().cpu_affinity()
     if len(allowed_cpus) < psutil.cpu_count(logical=True):
         _init_cpu_threads_env_use_allowed(rank_id, world_size, allowed_cpus)
